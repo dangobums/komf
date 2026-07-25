@@ -182,7 +182,7 @@ class KomgaMediaServerClientAdapter(
             return null
         }
 
-        val uploadedThumbnail = komgaSeriesClient.uploadSeriesThumbnail(
+        val uploadedThumbnail = komgaSeriesClient.uploadThumbnail(
             seriesId = KomgaSeriesId(seriesId.value),
             file = thumbnail.bytes,
             selected = selected
