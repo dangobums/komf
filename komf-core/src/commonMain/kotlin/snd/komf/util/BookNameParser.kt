@@ -4,8 +4,8 @@ import snd.komf.model.BookRange
 
 object BookNameParser {
     private val volumeRegexes = listOf(
-        "(?i)(?:^|),?\\s)\\(?volume\\s(?<volumeStart>[0-9]+)(,?\\s?[0-9]+,)+(?<volumeEnd>\\s?[0-9]+)\\)?".toRegex(),
-        "(?i)(?:^|),?\\s)\\(?\b([vtT]|vols\\.|vol\\.|volume)\\s?(?<volumeStart>[0-9]+([.x#][0-9]+)?)(?<volumeEnd>-[0-9]+([.x#][0-9]+)?)?\\)?".toRegex(),
+        "(?i)(?:^|,?\\s)\\(?volume\\s(?<volumeStart>[0-9]+)(,?\\s?[0-9]+,)+(?<volumeEnd>\\s?[0-9]+)\\)?".toRegex(),
+        "(?i)(?:^|,?\\s)\\(?\b([vtT]|vols\\.|vol\\.|volume)\\s?(?<volumeStart>[0-9]+([.x#][0-9]+)?)(?<volumeEnd>-[0-9]+([.x#][0-9]+)?)?\\)?".toRegex(),
         ".*第(?<volumeStart>\\d+)-?(?<volumeEnd>\\d+)?.*巻".toRegex(),
         ".*年(?:[0-9]+月)?(?:[0-9]+日)?(?<volumeStart>\\d+)-?(?<volumeEnd>\\d+)?号".toRegex(),
     )
