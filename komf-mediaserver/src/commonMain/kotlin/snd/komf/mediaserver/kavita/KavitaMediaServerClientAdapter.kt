@@ -172,7 +172,7 @@ class KavitaMediaServerClientAdapter(private val kavitaClient: KavitaClient) : M
 
     override suspend fun refreshMetadata(libraryId: MediaServerLibraryId, seriesId: MediaServerSeriesId) {
         kavitaClient.scanLibrary(libraryId.toKavitaLibraryId())
-        kavitaClient.scanSeries(seriesId.toKavitaSeriesId())
+        kavitaClient.scanSeries(libraryId.toKavitaLibraryId(), seriesId.toKavitaSeriesId())
     }
 }
 
@@ -288,7 +288,8 @@ private fun KavitaSeriesMetadata.toMediaServerSeriesMetadata(series: KavitaSerie
         status = status,
         title = series.name,
         titleSort = series.sortName,
-        alternativeTitles = series.localizedName?.let { listOf(MediaServerAlternativeTitle("Localized", it)) }
+        alternativeTitles = series.localizedName?.takeIf { it.isNotBlank() }
+            ?.let { listOf(MediaServerAlternativeTitle("Localized", it)) }
             ?: emptyList(),
         summary = summary ?: "",
         readingDirection = null,

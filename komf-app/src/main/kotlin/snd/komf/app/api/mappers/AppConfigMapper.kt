@@ -41,16 +41,22 @@ import snd.komf.providers.ProviderConfig
 import snd.komf.providers.ProvidersConfig
 import snd.komf.providers.SeriesMetadataConfig
 import snd.komf.providers.mangabaka.db.MangaBakaDbMetadata
+import kotlin.time.Instant
 
 class AppConfigMapper {
     private val maskedPlaceholder = "********"
 
     fun toDto(
         config: AppConfig,
-        mangaBakaDbMetadata: MangaBakaDbMetadata
+        mangaBakaDbMetadata: MangaBakaDbMetadata,
+        bookWalkerDbTimestamp: Instant?
     ): KomfConfig {
         return KomfConfig(
-            metadataProviders = toDto(config.metadataProviders, mangaBakaDbMetadata),
+            metadataProviders = toDto(
+                config = config.metadataProviders,
+                mangaBakaDbMetadata = mangaBakaDbMetadata,
+                bookWalkerDbTimestamp = bookWalkerDbTimestamp
+            ),
             komga = toDto(config.komga),
             kavita = toDto(config.kavita),
             notifications = toDto(config.notifications),
@@ -123,7 +129,8 @@ class AppConfigMapper {
 
     private fun toDto(
         config: MetadataProvidersConfig,
-        mangaBakaDbMetadata: MangaBakaDbMetadata
+        mangaBakaDbMetadata: MangaBakaDbMetadata,
+        bookWalkerDbTimestamp: Instant?
     ): MetadataProvidersConfigDto {
         val malClientId = config.malClientId?.let { clientId ->
             if (clientId.length < 32) maskedPlaceholder
@@ -147,6 +154,7 @@ class AppConfigMapper {
                 .map { (libraryId, config) -> libraryId to toDto(config) }
                 .toMap(),
             mangaBakaDatabase = toDto(mangaBakaDbMetadata),
+            bookWalkerDownloadDate = bookWalkerDbTimestamp
         )
     }
 
@@ -162,19 +170,20 @@ class AppConfigMapper {
 
     private fun toDto(config: ProvidersConfig): ProvidersConfigDto {
         return ProvidersConfigDto(
-            mangaUpdates = toDto(config.mangaUpdates),
-            mal = toDto(config.mal),
-            nautiljon = toDto(config.nautiljon),
-            aniList = toDto(config.aniList),
-            yenPress = toDto(config.yenPress),
-            kodansha = toDto(config.kodansha),
-            viz = toDto(config.viz),
+            mangaBaka = toDto(config.mangaBaka),
             bookWalker = toDto(config.bookWalker),
             mangaDex = toDto(config.mangaDex),
-            bangumi = toDto(config.bangumi),
+            mangaUpdates = toDto(config.mangaUpdates),
+            aniList = toDto(config.aniList),
+            mal = toDto(config.mal),
             comicVine = toDto(config.comicVine),
-            hentag = toDto(config.hentag),
-            mangaBaka = toDto(config.mangaBaka),
+
+            nautiljon = toDto(ProviderConfig()),
+            yenPress = toDto(config.yenPress),
+            kodansha = toDto(ProviderConfig()),
+            viz = toDto(config.viz),
+            bangumi = toDto(config.bangumi),
+            hentag = toDto(ProviderConfig()),
             webtoons = toDto(config.webtoons),
         )
     }

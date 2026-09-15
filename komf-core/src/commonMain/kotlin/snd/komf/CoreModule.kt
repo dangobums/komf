@@ -7,13 +7,15 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import snd.komf.ktor.komfUserAgent
 import snd.komf.providers.MetadataProvidersConfig
 import snd.komf.providers.ProvidersModule
+import snd.komf.providers.bookwalker.db.BookWalkerDbDownloader
 import snd.komf.providers.mangabaka.db.MangaBakaDbDownloader
 import snd.komf.providers.mangabaka.db.MangaBakaDbMetadata
-import kotlin.io.path.Path
+import java.nio.file.Path
 import kotlin.io.path.notExists
 
 class CoreModule(
     private val config: MetadataProvidersConfig,
+    workDir: Path,
     ktor: HttpClient,
     onStateRefresh: suspend () -> Unit,
 ) {
@@ -24,7 +26,7 @@ class CoreModule(
 
     }
 
-    private val mangaBakaDir = Path(config.mangabakaDatabaseDir)
+    private val mangaBakaDir = workDir.resolve("mangabaka")
     private val mangaBakaDatabaseFile = mangaBakaDir.resolve("mangabaka.sqlite")
     val mangaBakaDbMetadata = MangaBakaDbMetadata(
         mangaBakaDir.resolve("timestamp"),
@@ -42,5 +44,23 @@ class CoreModule(
         if (mangaBakaDatabaseFile.notExists()) null
         else Database.connect("jdbc:sqlite:$mangaBakaDatabaseFile")
 
-    val metadataProviders = ProvidersModule(config, baseHttpClient, mangaBakaDatabase).getMetadataProviders()
+    private val bookWalkerDir = workDir.resolve("bookwalker")
+    private val bookWalkerDatabaseFile = bookWalkerDir.resolve("bkwk-db.sqlite")
+    val bookWalkerDbDownloader = BookWalkerDbDownloader(
+        baseHttpClient,
+        databaseWorkDirectory = bookWalkerDir,
+        databaseFile = bookWalkerDatabaseFile,
+        onStateRefresh = onStateRefresh
+    )
+    val bookWalkerDatabase =
+        if (bookWalkerDatabaseFile.notExists()) null
+        else Database.connect("jdbc:sqlite:$bookWalkerDatabaseFile")
+
+
+    val metadataProviders = ProvidersModule(
+        config,
+        baseHttpClient,
+        mangaBakaDatabase,
+        bookWalkerDatabase,
+    ).getMetadataProviders()
 }

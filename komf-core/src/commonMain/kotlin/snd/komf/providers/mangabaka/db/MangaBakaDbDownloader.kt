@@ -18,14 +18,15 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.io.readByteArray
-import kotlinx.serialization.Serializable
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.io.IOUtils
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import snd.komf.providers.mangabaka.db.MangaBakaDownloadProgress.FinishedEvent
-import snd.komf.providers.mangabaka.db.MangaBakaDownloadProgress.ProgressEvent
+import snd.komf.model.DOWNLOAD_BUFFER_SIZE
+import snd.komf.model.DownloadProgress
+import snd.komf.model.DownloadProgress.FinishedEvent
+import snd.komf.model.DownloadProgress.ProgressEvent
 import java.io.BufferedInputStream
 import java.nio.file.Path
 import kotlin.io.path.createParentDirectories
@@ -35,7 +36,6 @@ import kotlin.io.path.inputStream
 import kotlin.io.path.outputStream
 import kotlin.time.Clock
 
-private const val DOWNLOAD_BUFFER_SIZE = 1024L * 1024L
 private val logger = KotlinLogging.logger { }
 
 class MangaBakaDbDownloader(
@@ -48,7 +48,7 @@ class MangaBakaDbDownloader(
     private val databaseUrl = "https://api.mangabaka.org/v1/database/series.sqlite.tar.gz"
     private val checksumUrl = "https://api.mangabaka.org/v1/database/series.sqlite.tar.gz.sha1"
 
-    private val progressFlow = MutableSharedFlow<MangaBakaDownloadProgress>(
+    private val progressFlow = MutableSharedFlow<DownloadProgress>(
         replay = 1,
         extraBufferCapacity = 1000,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -57,7 +57,7 @@ class MangaBakaDbDownloader(
     private val downloadScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun launchDownload(): Flow<MangaBakaDownloadProgress> {
+    fun launchDownload(): Flow<DownloadProgress> {
         if (downloadMutex.tryLock()) {
             progressFlow.resetReplayCache()
             downloadScope.launch { doDownload(lockedMutex = downloadMutex) }
@@ -95,7 +95,7 @@ class MangaBakaDbDownloader(
             databaseFile.deleteIfExists()
             dbMetadata.delete()
             progressFlow.emit(
-                MangaBakaDownloadProgress.ErrorEvent("${e::class.simpleName}: ${e.message}")
+                DownloadProgress.ErrorEvent("${e::class.simpleName}: ${e.message}")
             )
         } finally {
             lockedMutex.unlock()
@@ -142,10 +142,7 @@ class MangaBakaDbDownloader(
                     CREATE VIRTUAL TABLE series_fts USING fts5
                     (
                         id,
-                        title,
-                        native_title,
-                        romanized_title,
-                        secondary_titles_en,
+                        titles,
                         type,
                         tokenize = 'trigram'
                     );
@@ -156,43 +153,15 @@ class MangaBakaDbDownloader(
                 """
                     INSERT INTO series_fts
                     SELECT s.id,
-                           s.title,
-                           s.native_title,
-                           s.romanized_title,
                            GROUP_CONCAT(json_extract(json_each.value, '$.title'), ', '),
                            s.type
-                    FROM series s, json_each(secondary_titles_en)
+                    FROM series s, json_each(titles)
                     WHERE state = 'active'
-                    GROUP BY s.id
-                    UNION
-                    SELECT id,
-                           title,
-                           native_title,
-                           romanized_title,
-                           null,
-                           type
-                    FROM series
-                    WHERE state = 'active'
-                      AND secondary_titles_en is null;
+                    GROUP BY s.id;
                 """.trimIndent()
             )
         }
     }
 }
 
-@Serializable
-sealed interface MangaBakaDownloadProgress {
-    @Serializable
-    data class ProgressEvent(
-        val total: Long,
-        val completed: Long,
-        val info: String? = null,
-    ) : MangaBakaDownloadProgress
-
-    @Serializable
-    data object FinishedEvent : MangaBakaDownloadProgress
-
-    @Serializable
-    data class ErrorEvent(val message: String) : MangaBakaDownloadProgress
-}
 

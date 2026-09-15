@@ -12,14 +12,15 @@ import snd.komf.providers.mangabaka.MangaBakaType
 class MangaBakaApiClient(private val ktor: HttpClient) : MangaBakaDataSource {
     private val baseUrl = "https://api.mangabaka.org"
 
-    override suspend fun search(title: String, types: List<MangaBakaType>?): List<MangaBakaSeries> {
+    override suspend fun search(
+        title: String,
+        types: List<MangaBakaType>?,
+        typesNot: List<MangaBakaType>?
+    ): List<MangaBakaSeries> {
         return ktor.get("${baseUrl}/v1/series/search") {
             parameter("q", title)
-            parameter("content_rating", "safe")
-            parameter("content_rating", "suggestive")
-            parameter("content_rating", "erotica")
-            parameter("content_rating", "pornographic")
             types?.forEach { parameter("type", it.name.lowercase()) }
+            typesNot?.forEach { parameter("type_not", it.name.lowercase()) }
         }.body<MangaBakaSearchResponse>().data
     }
 

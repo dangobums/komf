@@ -1,18 +1,32 @@
 package snd.komf.providers
 
 enum class CoreProviders {
-    ANILIST,
-    BANGUMI,
-    BOOK_WALKER,
-    COMIC_VINE,
-    HENTAG,
-    KODANSHA,
-    MAL,
-    MANGA_UPDATES,
-    MANGADEX,
     MANGA_BAKA,
-    NAUTILJON,
-    WEBTOONS,
+    BOOK_WALKER,
+    MANGADEX,
+    MANGA_UPDATES,
+    ANILIST,
+    MAL,
+    COMIC_VINE,
+
+    @Deprecated("Unmaintained. Untested")
+    BANGUMI,
+
+
+    @Deprecated("Unmaintained. Untested")
     YEN_PRESS,
+
+    @Deprecated("Unmaintained. Untested")
     VIZ,
+
+    @Deprecated("Unmaintained. Untested")
+    WEBTOONS,
+
+    @Deprecated("removed")
+    KODANSHA,
+
+    @Deprecated("removed")
+    NAUTILJON,
+    @Deprecated("removed")
+    HENTAG,
 }

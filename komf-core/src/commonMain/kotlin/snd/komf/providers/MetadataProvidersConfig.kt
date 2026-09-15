@@ -20,28 +20,30 @@ data class MetadataProvidersConfig(
     val comicVineSearchLimit: Int? = null,
     val comicVineIssueName: String? = null,
     val comicVineIdFormat: String? = null,
+    @Deprecated("to be removed")
     val bangumiToken: String? = null,
     val nameMatchingMode: NameMatchingMode = NameMatchingMode.CLOSEST_MATCH,
     val defaultProviders: ProvidersConfig = ProvidersConfig(),
     val libraryProviders: Map<String, ProvidersConfig> = emptyMap(),
-    val mangabakaDatabaseDir: String = "./mangabaka",
 )
 
 @Serializable
 data class ProvidersConfig(
-    val mangaUpdates: ProviderConfig = ProviderConfig(),
-    val mal: ProviderConfig = ProviderConfig(),
-    val nautiljon: ProviderConfig = ProviderConfig(),
-    val aniList: AniListConfig = AniListConfig(),
-    val yenPress: ProviderConfig = ProviderConfig(),
-    val kodansha: ProviderConfig = ProviderConfig(),
-    val viz: ProviderConfig = ProviderConfig(),
+    val mangaBaka: MangaBakaConfig = MangaBakaConfig(),
     val bookWalker: ProviderConfig = ProviderConfig(),
     val mangaDex: MangaDexConfig = MangaDexConfig(),
-    val bangumi: ProviderConfig = ProviderConfig(),
+    val mangaUpdates: ProviderConfig = ProviderConfig(),
+    val aniList: AniListConfig = AniListConfig(),
+    val mal: ProviderConfig = ProviderConfig(),
     val comicVine: ProviderConfig = ProviderConfig(),
-    val hentag: ProviderConfig = ProviderConfig(),
-    val mangaBaka: MangaBakaConfig = MangaBakaConfig(),
+
+    @Deprecated("to be removed")
+    val yenPress: ProviderConfig = ProviderConfig(),
+    @Deprecated("to be removed")
+    val viz: ProviderConfig = ProviderConfig(),
+    @Deprecated("to be removed")
+    val bangumi: ProviderConfig = ProviderConfig(),
+    @Deprecated("to be removed")
     val webtoons: ProviderConfig = ProviderConfig(),
 )
 

@@ -45,8 +45,6 @@ class ConfigLoader(private val yaml: Yaml) {
         val appriseConfig = config.notifications.apprise
         val discordConfig = config.notifications.discord
         val templatesDirectory = configDirectory ?: notificationConfig.templatesDirectory
-        val mangaBakaDirectory = configDirectory?.let { "$it/mangabaka" }
-            ?: config.metadataProviders.mangabakaDatabaseDir
 
         val appriseUrls = System.getenv("KOMF_APPRISE_URLS")?.ifBlank { null }
             ?.split(",")?.toList()
@@ -96,7 +94,6 @@ class ConfigLoader(private val yaml: Yaml) {
                 malClientId = malClientId,
                 comicVineApiKey = comicVineApiKey,
                 bangumiToken = bangumiToken,
-                mangabakaDatabaseDir = mangaBakaDirectory
             ),
             notifications = config.notifications.copy(
                 templatesDirectory = templatesDirectory,
@@ -116,16 +113,13 @@ class ConfigLoader(private val yaml: Yaml) {
         if (
             config.metadataProviders.defaultProviders.mangaUpdates.enabled.not() &&
             config.metadataProviders.defaultProviders.mal.enabled.not() &&
-            config.metadataProviders.defaultProviders.nautiljon.enabled.not() &&
             config.metadataProviders.defaultProviders.aniList.enabled.not() &&
             config.metadataProviders.defaultProviders.yenPress.enabled.not() &&
-            config.metadataProviders.defaultProviders.kodansha.enabled.not() &&
             config.metadataProviders.defaultProviders.viz.enabled.not() &&
             config.metadataProviders.defaultProviders.bookWalker.enabled.not() &&
             config.metadataProviders.defaultProviders.mangaDex.enabled.not() &&
             config.metadataProviders.defaultProviders.bangumi.enabled.not() &&
             config.metadataProviders.defaultProviders.comicVine.enabled.not() &&
-            config.metadataProviders.defaultProviders.hentag.enabled.not() &&
             config.metadataProviders.defaultProviders.mangaBaka.enabled.not() &&
             config.metadataProviders.defaultProviders.webtoons.enabled.not() &&
             config.metadataProviders.libraryProviders.isEmpty()

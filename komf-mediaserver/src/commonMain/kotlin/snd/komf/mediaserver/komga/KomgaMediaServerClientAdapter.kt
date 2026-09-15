@@ -82,8 +82,9 @@ class KomgaMediaServerClientAdapter(
 
     override suspend fun getSeriesThumbnail(seriesId: MediaServerSeriesId): Image? {
         return runCatching {
-            komgaSeriesClient.getDefaultThumbnail(KomgaSeriesId(seriesId.value))
-            ?.let(::Image)
+            komgaSeriesClient.getDefaultThumbnail(KomgaSeriesId(seriesId.value))?.let {
+                Image(it)
+            }
         }.getOrNull()
     }
 
@@ -113,8 +114,7 @@ class KomgaMediaServerClientAdapter(
 
     override suspend fun getBookThumbnail(bookId: MediaServerBookId): Image? {
         return runCatching {
-            komgaBookClient.getDefaultThumbnail(KomgaBookId(bookId.value))
-            ?.let(::Image)
+            komgaBookClient.getDefaultThumbnail(KomgaBookId(bookId.value))?.let { Image(it) }
         }.getOrNull()
     }
 
