@@ -11,6 +11,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readLine
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
@@ -27,11 +29,11 @@ class KomfConfigClient(
 ) {
 
     suspend fun getConfig(): KomfConfig {
-        return ktor.get("/api/config").body()
+        return ktor.get("api/config").body()
     }
 
     suspend fun updateConfig(request: KomfConfigUpdateRequest) {
-        ktor.patch("/api/config") {
+        ktor.patch("api/config") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }
@@ -40,11 +42,12 @@ class KomfConfigClient(
     fun updateMangaBakaDb(): Flow<DownloadProgress> {
         return flow {
             runCatching {
-                ktor.preparePost("/api/update-manga-baka-db").execute { response ->
+                ktor.preparePost("api/update-manga-baka-db").execute { response ->
                     streamProgressEvents(response.bodyAsChannel())
                 }
             }.onFailure {
                 emit(ErrorEvent(it.message ?: "Unexpected error"))
+                currentCoroutineContext().ensureActive()
             }
         }
     }
@@ -52,11 +55,12 @@ class KomfConfigClient(
     fun updateBookWalkerDb(): Flow<DownloadProgress> {
         return flow {
             runCatching {
-                ktor.preparePost("/api/update-book-walker-db").execute { response ->
+                ktor.preparePost("api/update-book-walker-db").execute { response ->
                     streamProgressEvents(response.bodyAsChannel())
                 }
             }.onFailure {
                 emit(ErrorEvent(it.message ?: "Unexpected error"))
+                currentCoroutineContext().ensureActive()
             }
         }
     }

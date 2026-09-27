@@ -22,6 +22,7 @@ class KomfClientFactory private constructor(private val builder: Builder) {
     fun mediaServerClient(mediaServer: MediaServer) = KomfMediaServerClient(ktor, mediaServer)
     fun jobClient() = KomfJobClient(ktor = ktor, json = json)
     fun notificationClient() = KomfNotificationClient(ktor = ktor)
+    fun mangaBaka() = KomfMangaBakaClient(ktor = ktor)
 
 
     private val baseUrl: () -> String = builder.baseUrl
@@ -29,7 +30,7 @@ class KomfClientFactory private constructor(private val builder: Builder) {
     private val ktor: HttpClient = (builder.ktor ?: HttpClient()).config {
         expectSuccess = true
         builder.cookieStorage?.let { install(HttpCookies) { storage = it } }
-        defaultRequest { url(baseUrl()) }
+        defaultRequest { url(baseUrl().trimEnd('/') + "/") }
         install(ContentNegotiation) { json(json) }
         install(SSE)
     }
