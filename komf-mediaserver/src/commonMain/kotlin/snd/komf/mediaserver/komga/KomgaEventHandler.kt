@@ -1,13 +1,14 @@
 package snd.komf.mediaserver.komga
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -19,8 +20,12 @@ import snd.komf.mediaserver.model.MediaServerLibraryId
 import snd.komf.mediaserver.model.MediaServerSeriesId
 import snd.komga.client.sse.KomgaEvent
 import snd.komga.client.sse.KomgaSSESession
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
+private val minRetryDelay = 5.seconds
+private val maxRetryDelay = 1.minutes
 
 class KomgaEventHandler(
     private val eventSourceFactory: suspend () -> KomgaSSESession,
@@ -41,34 +46,55 @@ class KomgaEventHandler(
 
     fun start() {
         eventHandlerScope.launch {
-            val eventSource = eventSourceFactory()
-            this@KomgaEventHandler.eventSource = eventSource
+            var retryDelay = minRetryDelay
+            while (isActive) {
+                try {
+                    val eventSource = eventSourceFactory()
+                    this@KomgaEventHandler.eventSource = eventSource
+                    logger.info { "Connected to Komga event stream" }
+                    retryDelay = minRetryDelay
 
-            eventSource.incoming.onEach { event ->
-                logger.debug { event }
-                when (event) {
-                    is KomgaEvent.BookAdded -> mutex.withLock { bookAddedEvents.add(event) }
-                    is KomgaEvent.BookDeleted -> mutex.withLock { bookDeletedEvents.add(event) }
-                    is KomgaEvent.SeriesDeleted -> mutex.withLock { seriesDeletedEvents.add(event) }
-                    is KomgaEvent.TaskQueueStatus -> {
-                        if (event.count != 0) return@onEach
-
-                        mutex.withLock {
-                            processEvents(
-                                bookAddedEvents.toList(),
-                                seriesDeletedEvents.toList(),
-                                bookDeletedEvents.toList()
-                            )
-
-                            bookAddedEvents.clear()
-                            bookDeletedEvents.clear()
-                            seriesDeletedEvents.clear()
-                        }
-                    }
-
-                    else -> {}
+                    eventSource.incoming.collect { event -> handleEvent(event) }
+                    logger.warn { "Komga event stream closed" }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.warn { "Komga event stream error: ${e.message}" }
+                } finally {
+                    eventSource?.cancel()
+                    eventSource = null
                 }
-            }.launchIn(eventHandlerScope)
+
+                logger.info { "Reconnecting to Komga event stream in $retryDelay" }
+                delay(retryDelay)
+                retryDelay = (retryDelay * 2).coerceAtMost(maxRetryDelay)
+            }
+        }
+    }
+
+    private suspend fun handleEvent(event: KomgaEvent) {
+        logger.debug { event }
+        when (event) {
+            is KomgaEvent.BookAdded -> mutex.withLock { bookAddedEvents.add(event) }
+            is KomgaEvent.BookDeleted -> mutex.withLock { bookDeletedEvents.add(event) }
+            is KomgaEvent.SeriesDeleted -> mutex.withLock { seriesDeletedEvents.add(event) }
+            is KomgaEvent.TaskQueueStatus -> {
+                if (event.count != 0) return
+
+                mutex.withLock {
+                    processEvents(
+                        bookAddedEvents.toList(),
+                        seriesDeletedEvents.toList(),
+                        bookDeletedEvents.toList()
+                    )
+
+                    bookAddedEvents.clear()
+                    bookDeletedEvents.clear()
+                    seriesDeletedEvents.clear()
+                }
+            }
+
+            else -> {}
         }
     }
 
