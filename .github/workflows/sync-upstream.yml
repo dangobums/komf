@@ -1,0 +1,91 @@
+name: Sync upstream
+
+# Merges Snd-R/komf master into this fork's master.
+# Only pushes when the merge is conflict-free and the build passes;
+# otherwise the run fails and master is left untouched.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://github.com/Snd-R/komf.git
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    outputs:
+      updated: ${{ steps.merge.outputs.updated }}
+      sha: ${{ steps.push.outputs.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Merge upstream
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch upstream master
+
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo "Already up to date with upstream"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "New upstream commits:"
+          git log --oneline HEAD..upstream/master
+
+          if ! git merge --no-edit upstream/master; then
+            echo "::error::Merge conflict with upstream. Resolve locally: git fetch upstream && git merge upstream/master"
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        if: steps.merge.outputs.updated == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        if: steps.merge.outputs.updated == 'true'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build JAR with Gradle
+        if: steps.merge.outputs.updated == 'true'
+        run: ./gradlew :komf-app:shadowJar
+
+      - name: Push to master
+        id: push
+        if: steps.merge.outputs.updated == 'true'
+        run: |
+          git push origin HEAD:master
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  docker:
+    needs: sync
+    if: needs.sync.outputs.updated == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker-ghcr.yml
+    with:
+      ref: ${{ needs.sync.outputs.sha }}
